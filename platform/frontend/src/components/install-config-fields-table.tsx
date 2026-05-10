@@ -444,22 +444,33 @@ export function InstallConfigFieldsTable<TFieldValues extends FieldValues>({
                         );
                       }
 
+                      if (valueType === "secret") {
+                        return (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder={
+                                  hasStoredSecret ? "••••••••" : valuePlaceholder
+                                }
+                                className="font-mono"
+                                autoComplete={MCP_SECRET_AUTOCOMPLETE}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }
+
                       return (
                         <FormItem>
                           <FormControl>
-                            <Input
-                              type={
-                                valueType === "secret" ? "password" : "text"
-                              }
-                              placeholder={
-                                hasStoredSecret ? "••••••••" : valuePlaceholder
-                              }
-                              className="font-mono"
-                              autoComplete={
-                                valueType === "secret"
-                                  ? MCP_SECRET_AUTOCOMPLETE
-                                  : MCP_CONFIG_AUTOCOMPLETE
-                              }
+                            <Textarea
+                              placeholder={valuePlaceholder}
+                              className="font-mono text-xs resize-y min-h-10 max-h-32 overflow-y-auto"
+                              autoComplete={MCP_CONFIG_AUTOCOMPLETE}
+                              rows={1}
                               {...field}
                             />
                           </FormControl>

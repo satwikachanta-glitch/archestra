@@ -6,8 +6,12 @@ import { EnvironmentVariableSchema } from "@shared";
 import { Loader2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
+import { useState } from "react";
+import Editor from "@monaco-editor/react";
 import { EnvironmentVariablesFormField } from "@/components/environment-variables-form-field";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { JsonArrayTextarea } from "./json-array-textarea";
 import {
   Dialog,
   DialogContent,
@@ -45,7 +49,7 @@ const customServerRequestSchema = z
     serverUrl: z.string().optional(),
     docsUrl: z.string().optional(),
     command: z.string().optional(),
-    arguments: z.string(),
+    arguments: z.array(z.string()).default([]),
     environment: z.array(EnvironmentVariableSchema),
     requestReason: z.string(),
   })
@@ -82,7 +86,7 @@ export function CustomServerRequestDialog({
       serverUrl: "",
       docsUrl: "",
       command: "",
-      arguments: "",
+      arguments: [],
       environment: [],
       requestReason: "",
     },
@@ -119,10 +123,8 @@ export function CustomServerRequestDialog({
             serverType: "local" as const,
             localConfig: {
               command: values.command,
-              arguments: values.arguments
-                .split("\n")
-                .map((arg) => arg.trim())
-                .filter((arg) => arg.length > 0),
+              arguments:
+                values.arguments.length > 0 ? values.arguments : undefined,
               environment:
                 values.environment.length > 0 ? values.environment : undefined,
             },
@@ -138,6 +140,27 @@ export function CustomServerRequestDialog({
     onClose();
   };
 
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  const handleJsonChange = (value: string | undefined) => {
+    if (!value) return;
+    try {
+      const parsed = JSON.parse(value);
+      const result = customServerRequestSchema.safeParse(parsed);
+      if (result.success) {
+        form.reset(result.data, { keepDirty: true });
+        setJsonError(null);
+      } else {
+        setJsonError("JSON does not match the required schema.");
+      }
+    } catch (e) {
+      setJsonError("Invalid JSON format.");
+    }
+  };
+
+  const isFormValid = form.formState.isValid;
+  const disableSubmit = createRequest.isPending || !isFormValid || !!jsonError;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
@@ -151,7 +174,13 @@ export function CustomServerRequestDialog({
 
         <Form {...form}>
           <DialogForm onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-4 py-4">
+            <Tabs defaultValue="form" className="w-full">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="form">Form</TabsTrigger>
+                <TabsTrigger value="json">JSON</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="form" className="space-y-4 py-4">
               <FormField
                 control={form.control}
                 name="serverType"
@@ -276,12 +305,21 @@ export function CustomServerRequestDialog({
                     name="arguments"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Arguments (one per line)</FormLabel>
+                        <FormLabel>Arguments (JSON array)</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder={`/path/to/server.js\n--verbose`}
+                          <JsonArrayTextarea
+                            placeholder={`[\n  "--verbose"\n]`}
                             rows={3}
-                            {...field}
+                            className="font-mono"
+                            value={field.value}
+                            onChange={field.onChange}
+                            onInvalid={(invalid) => {
+                              if (invalid) {
+                                form.setError("arguments", { message: "Invalid JSON array" });
+                              } else {
+                                form.clearErrors("arguments");
+                              }
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -319,13 +357,35 @@ export function CustomServerRequestDialog({
                   </FormItem>
                 )}
               />
-            </div>
+              </TabsContent>
+              <TabsContent value="json" className="py-4">
+                <div className="border rounded-md overflow-hidden flex flex-col">
+                  <Editor
+                    height="400px"
+                    defaultLanguage="json"
+                    value={JSON.stringify(form.watch(), null, 2)}
+                    onChange={handleJsonChange}
+                    options={{
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      wordWrap: "on",
+                      formatOnPaste: true,
+                    }}
+                  />
+                  {jsonError && (
+                    <div className="bg-destructive/10 text-destructive p-3 text-sm border-t">
+                      {jsonError}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
 
             <DialogStickyFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createRequest.isPending}>
+              <Button type="submit" disabled={disableSubmit}>
                 {createRequest.isPending && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}

@@ -28,7 +28,7 @@ export function useAppearanceSettings(enabled = true) {
       const { data, error } = await archestraApiSdk.getAppearanceSettings();
 
       if (error || !data) {
-        return undefined;
+        return null;
       }
 
       return data;
@@ -66,7 +66,7 @@ export function useInvitation(invitationId: string) {
     queryKey: organizationKeys.invitation(invitationId),
     queryFn: async () => {
       if (!session) {
-        return undefined;
+        return null;
       }
       const response = await authClient.organization.getInvitation({
         query: { id: invitationId },

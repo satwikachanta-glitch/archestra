@@ -85,7 +85,7 @@ describe("transformFormToApiData", () => {
       enterpriseManagedConfig: null,
       localConfig: {
         command: "node",
-        arguments: "server.js",
+        arguments: ["server.js"],
         environment: [],
         envFrom: [],
         dockerImage: "",
@@ -766,7 +766,7 @@ describe("transformFormToApiData - secret env var preservation", () => {
       enterpriseManagedConfig: null,
       localConfig: {
         command: "node",
-        arguments: "server.js",
+        arguments: ["server.js"],
         environment,
         envFrom: [],
         dockerImage: "",

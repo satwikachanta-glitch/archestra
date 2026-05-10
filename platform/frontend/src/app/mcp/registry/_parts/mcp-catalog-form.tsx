@@ -34,6 +34,14 @@ import {
 import { EnvironmentVariablesFormField } from "@/components/environment-variables-form-field";
 import { ExternalDocsLink } from "@/components/external-docs-link";
 import { InstallConfigFieldsTable } from "@/components/install-config-fields-table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import Editor from "@monaco-editor/react";
+import { JsonArrayTextarea } from "./json-array-textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -640,7 +648,28 @@ export function McpCatalogForm({
   const [pendingSubmit, setPendingSubmit] =
     useState<McpCatalogFormValues | null>(null);
 
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  const handleJsonChange = (value: string | undefined) => {
+    if (!value) return;
+    try {
+      const parsed = JSON.parse(value);
+      // Validate against the form schema, which handles the entire form
+      // But we must use safeParse from mcpCatalogFormSchema if it was exported,
+      // here we just try to reset the form. If form.reset causes issues with bad data,
+      // we might just let it be invalid but we can't easily validate without the schema.
+      // We will assume it's valid enough for RHF to handle validation on submit/change.
+      form.reset(parsed, { keepDirty: true });
+      setJsonError(null);
+    } catch (e) {
+      setJsonError("Invalid JSON format.");
+    }
+  };
+
   const performSubmit = async (values: McpCatalogFormValues) => {
+    if (jsonError) {
+      return;
+    }
     // Save any unsaved label before submitting
     const updatedLabels = labelsRef.current?.saveUnsavedLabel() || labels;
     const submittedValues = { ...values, labels: updatedLabels };
@@ -674,10 +703,16 @@ export function McpCatalogForm({
           autoComplete={MCP_CONFIG_AUTOCOMPLETE}
           data-1p-ignore="true"
         >
-          <div
-            className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 ${embedded ? "space-y-6 pt-6 pb-0" : "space-y-6 py-6"}`}
-          >
-            {catalogButton}
+          <Tabs defaultValue="form" className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${embedded ? "flex flex-col pt-6 pb-0" : "flex flex-col py-6"}`}>
+            <div className="px-6 mb-4">
+              <TabsList className="grid w-full grid-cols-2 max-w-md">
+                <TabsTrigger value="form">Form</TabsTrigger>
+                <TabsTrigger value="json">JSON</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <TabsContent value="form" className="flex-1 space-y-6 px-6 mt-0 min-h-0 overflow-y-auto">
+              {catalogButton}
 
             <div className="space-y-4">
               <div className="flex items-stretch gap-3">
@@ -1003,10 +1038,18 @@ export function McpCatalogForm({
                           <ReinstallHint show={isArgumentsDirty} />
                         </FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder={`/path/to/server.js\n--verbose`}
+                          <JsonArrayTextarea
+                            placeholder={`[\n  "--verbose"\n]`}
                             className="font-mono min-h-20"
-                            {...field}
+                            value={field.value}
+                            onChange={field.onChange}
+                            onInvalid={(invalid) => {
+                              if (invalid) {
+                                form.setError("localConfig.arguments", { message: "Invalid JSON array" });
+                              } else {
+                                form.clearErrors("localConfig.arguments");
+                              }
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -2120,7 +2163,28 @@ export function McpCatalogForm({
                 />
               </div>
             </div>
-          </div>
+        </TabsContent>
+            <TabsContent value="json" className="flex-1 min-h-0 mt-0 px-6 pb-6 flex flex-col">
+              <div className="flex-1 border rounded-md overflow-hidden flex flex-col min-h-[400px]">
+                <Editor
+                  defaultLanguage="json"
+                  value={JSON.stringify(form.watch(), null, 2)}
+                  onChange={handleJsonChange}
+                  options={{
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    wordWrap: "on",
+                    formatOnPaste: true,
+                  }}
+                />
+                {jsonError && (
+                  <div className="bg-destructive/10 text-destructive p-3 text-sm border-t">
+                    {jsonError}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {typeof footer === "function"
             ? footer({

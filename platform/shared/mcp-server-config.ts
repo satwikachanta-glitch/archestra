@@ -133,7 +133,7 @@ export const LocalConfigSchema = z
 
 export const LocalConfigFormSchema = z.object({
   command: z.string().optional(),
-  arguments: z.string(),
+  arguments: z.array(z.string()).optional(),
   environment: z.array(EnvironmentVariableSchema),
   envFrom: z.array(EnvFromSchema).optional(),
   dockerImage: z.string().optional(),

@@ -34,13 +34,7 @@ export function transformFormToApiData(
 
   // Handle local configuration
   if (values.serverType === "local" && values.localConfig) {
-    // Parse arguments string into array
-    const argumentsArray = values.localConfig.arguments
-      ? values.localConfig.arguments
-          .split("\n")
-          .map((arg) => arg.trim())
-          .filter((arg) => arg.length > 0)
-      : [];
+    const argumentsArray = values.localConfig.arguments || [];
 
     data.localConfig = {
       command: values.localConfig.command || undefined,
@@ -368,8 +362,8 @@ export function transformCatalogItemToFormValues(
       }
     | undefined;
   if (item.localConfig) {
-    // Convert arguments array back to string
-    const argumentsString = item.localConfig.arguments?.join("\n") || "";
+    // Use arguments array directly
+    const argumentsArray = item.localConfig.arguments || [];
 
     const config = item.localConfig;
 
@@ -400,7 +394,7 @@ export function transformCatalogItemToFormValues(
 
     localConfig = {
       command: item.localConfig.command || "",
-      arguments: argumentsString,
+      arguments: argumentsArray,
       environment,
       envFrom: item.localConfig.envFrom || [],
       dockerImage: item.localConfig.dockerImage || "",
@@ -673,7 +667,7 @@ export function transformExternalCatalogToFormValues(
     if (dockerConfig) {
       localConfig = {
         command: dockerConfig.command || "",
-        arguments: dockerConfig.arguments?.join("\n") || "",
+        arguments: dockerConfig.arguments || [],
         dockerImage: dockerConfig.dockerImage || "",
         transportType: dockerConfig.transportType || "stdio",
         httpPort: dockerConfig.httpPort?.toString() || "",
@@ -686,7 +680,7 @@ export function transformExternalCatalogToFormValues(
     } else {
       localConfig = {
         command: server.server.command || "",
-        arguments: server.server.args?.join("\n") || "",
+        arguments: server.server.args || [],
         dockerImage: server.server.docker_image || "",
         transportType: "stdio",
         httpPort: "",
@@ -745,7 +739,7 @@ export function transformExternalCatalogToFormValues(
     },
     localConfig: localConfig ?? {
       command: "",
-      arguments: "",
+      arguments: [],
       environment: [],
       envFrom: [],
       dockerImage: "",
